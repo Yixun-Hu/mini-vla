@@ -9,6 +9,12 @@ import metaworld
 from metaworld.policies import ENV_POLICY_MAP
 from utils.tokenizer import SimpleTokenizer
 
+# Set environment variables for headless rendering
+# Try EGL first (best for headless), fallback to OSMesa, then system default
+# if 'DISPLAY' not in os.environ:
+#     # If no display is set, try to use EGL for headless rendering
+#     os.environ.setdefault('MUJOCO_GL', 'egl')
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env-name", type=str, default="push-v3")

@@ -35,21 +35,21 @@ Additionally, I provide scripts such as [scripts/collect_data.py](scripts/collec
 
 Create (or activate) a conda environment
 
-```
+```bash
 conda create --name mini-vla python=3.10
 conda activate mini-vla
 ```
 
 Clone mini-VLA project
 
-```
+```bash
 git clone https://github.com/keivalya/mini-vla.git
 cd mini-vla
 ```
 
 Install dependencies
 
-```
+```bash
 pip install -r requirements.txt
 ```
 
@@ -57,7 +57,7 @@ pip install -r requirements.txt
 
 This gathers trajectories using an expert Meta-World policy and saves them in `.npz` dataset.
 
-```
+```bash
 python -m scripts.collect_data \
   --env-name push-v3 \
   --camera-name corner \
@@ -70,20 +70,20 @@ python -m scripts.collect_data \
 
 Train a small vision-language diffusion policy on your collected dataset.
 
-```
+```bash
 python -m scripts.train \
-  --dataset-path data/push_v3.npz \
+  --dataset-path data/metaworld_push_bc.npz \
   --epochs 50 \
   --batch-size 64 \
   --save-path checkpoints/model.pt \
-  --device cpu
+  --device cuda
 ```
 
 ## Test your model in sim
 
 Run the trained VLA inside the Meta-World MT1 environment.
 
-```
+```bash
 python -m scripts.test \
   --checkpoint checkpoints/model.pt \
   --env-name push-v3 \
@@ -111,3 +111,55 @@ PRs, improvements, and experiments are welcome! Try adding support for,
 - MT10 / MT50 multi-task training
 
 much more! Checkout [mini-vla/issues](https://github.com/keivalya/mini-vla/issues).
+
+## Debug
+When running the collect_data.py script, I encountered the following error:
+```bash
+Traceback (most recent call last):
+  File "/home/yixunhu/miniconda3/envs/mini-vla/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/yixunhu/miniconda3/envs/mini-vla/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/yixunhu/codespace/mini-vla/scripts/collect_data.py", line 119, in <module>
+    main()
+  File "/home/yixunhu/codespace/mini-vla/scripts/collect_data.py", line 68, in main
+    img = env.render() # (H, W, 3) uint8
+  File "/home/yixunhu/miniconda3/envs/mini-vla/lib/python3.10/site-packages/gymnasium/wrappers/common.py", line 409, in render
+    return super().render()
+  File "/home/yixunhu/miniconda3/envs/mini-vla/lib/python3.10/site-packages/gymnasium/core.py", line 337, in render
+    return self.env.render()
+  File "/home/yixunhu/miniconda3/envs/mini-vla/lib/python3.10/site-packages/gymnasium/wrappers/common.py", line 301, in render
+    return env_render_passive_checker(self.env)
+  File "/home/yixunhu/miniconda3/envs/mini-vla/lib/python3.10/site-packages/gymnasium/utils/passive_env_checker.py", line 361, in env_render_passive_checker
+    result = env.render()
+  File "/home/yixunhu/miniconda3/envs/mini-vla/lib/python3.10/site-packages/gymnasium/core.py", line 337, in render
+```
+This is because MuJoCo requires an OpenGL context even for off-screen rendering, but no display is available. We can use Xvfb to run the script with a virtual display. 
+```bash
+# Ubuntu/Debian
+sudo apt-get install xvfb
+
+# Check if xvfb-run is installed
+which xvfb-run
+```
+For collecting data:
+```bash
+xvfb-run -a python -m scripts.collect_data \
+  --env-name push-v3 \
+  --camera-name corner \
+  --episodes 100 \
+  --max-steps 100 \
+  --output-path data/metaworld_push_bc.npz
+```
+For testing:
+```bash
+xvfb-run -a python -m scripts.test \
+  --checkpoint checkpoints/model.pt \
+  --env-name push-v3 \
+  --episodes 5 \
+  --max-steps 150 \
+  --instruction "push the object to the goal" \
+  --device cuda \
+  --save-video \
+  --video-dir videos
+```
